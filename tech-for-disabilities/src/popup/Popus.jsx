@@ -33,35 +33,34 @@ export default function AccessibilityTool() {
     }
   };
 
-  // Function to speak a sample text
-  const handleSpeak = () => {
-    chrome.runtime.sendMessage({
-      action: "speakText",
-      text: "This is a test speech.",
-      speed,
-      voice
-    });
+  const handleSpeak = (text) => {
+    const utterance = new SpeechSynthesisUtterance(text || "This is a test speech.");
+    utterance.rate = speed;
+    utterance.voice = voices.find(v => v.name === voice) || null;
+    window.speechSynthesis.speak(utterance);
   };
 
-  // Function to read the selected text
   const handleSpeakSelectedText = () => {
-    chrome.tabs.executeScript(
-      {
-        code: "window.getSelection().toString();"
-      },
-      (selection) => {
-        if (selection && selection[0]) {
-          chrome.runtime.sendMessage({
-            action: "speakText",
-            text: selection[0],
-            speed,
-            voice
-          });
-        } else {
-          alert("No text selected!");
-        }
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs.length) {
+        alert("No active tab found!");
+        return;
       }
-    );
+
+      chrome.scripting.executeScript(
+        {
+          target: { tabId: tabs[0].id },
+          func: () => window.getSelection().toString()
+        },
+        (results) => {
+          if (results && results[0] && results[0].result) {
+            handleSpeak(results[0].result);
+          } else {
+            alert("No text selected!");
+          }
+        }
+      );
+    });
   };
 
   return (
@@ -93,7 +92,7 @@ export default function AccessibilityTool() {
           <input type="range" min="0.5" max="2.0" step="0.1" value={speed} onChange={(e) => setSpeed(parseFloat(e.target.value))} style={{ width: '100%' }} />
         </div>
       </div>
-      <button style={{ marginTop: '16px', width: '100%', padding: '8px', background: '#007bff', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }} onClick={handleSpeak}>Test Speech</button>
+      <button style={{ marginTop: '16px', width: '100%', padding: '8px', background: '#007bff', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }} onClick={() => handleSpeak()}>Test Speech</button>
       <button style={{ marginTop: '8px', width: '100%', padding: '8px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }} onClick={handleSpeakSelectedText}>Read Selected Text</button>
     </div>
   );
