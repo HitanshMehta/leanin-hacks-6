@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Assistive Accessibility Extension",
   "version": "1.0",
-  "permissions": ["storage", "contextMenus", "scripting", "activeTab"],
+  "permissions": ["storage", "contextMenus", "scripting", "activeTab", "tabs"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"

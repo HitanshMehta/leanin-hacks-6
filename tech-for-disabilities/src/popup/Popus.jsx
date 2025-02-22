@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 
 const HUGGING_FACE_API_KEY = import.meta.env.VITE_API_KEY;
+const apiKey = import.meta.env.VITE_TRANSLATE_API_KEY;
 
 export default function EnhancedAccessibilityTool() {
   // Original accessibility states
@@ -23,6 +25,11 @@ export default function EnhancedAccessibilityTool() {
   // Analysis states
   const [isSummarizing, setIsSummarizing] = useState(false);
 
+  const [sourceLanguage, setSourceLanguage] = useState("en");
+  const [targetLanguage, setTargetLanguage] = useState("fr");
+  const [translatedText, setTranslatedText] = useState("");
+
+
   useEffect(() => {
     const synth = window.speechSynthesis;
     const loadVoices = () => {
@@ -41,7 +48,14 @@ export default function EnhancedAccessibilityTool() {
       case "tts":
         setTextToSpeech(!textToSpeech);
         break;
-      case "sign":
+      case "video-captioning":
+        setVideoCaptioning(!videoCaptioning);
+        chrome.runtime.sendMessage({
+          action: "toggleVideoCaptioning",
+          enableCaptioning: !videoCaptioning
+        });
+        break;
+        case "sign":
         setSignLanguage(!signLanguage);
         break;
       case "read":
@@ -143,25 +157,26 @@ export default function EnhancedAccessibilityTool() {
     }
   };
 
-  const toggleEasyReadMode = (enabled, fontSize, lineHeight, fontColor, bgColor) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!tabs.length) return;
-
-      chrome.scripting.executeScript({
-        target: { tabId: tabs[0].id },
-        func: (enabled, fontSize, lineHeight, fontColor, bgColor) => {
-          document.querySelectorAll("* :not(script, style, meta, link)").forEach((el) => {
-            el.style.fontSize = enabled ? `${fontSize}px` : "";
-            el.style.lineHeight = enabled ? `${lineHeight}` : "";
-            el.style.color = enabled ? fontColor : "";
-            el.style.backgroundColor = enabled ? bgColor : "";
-            el.style.fontFamily = enabled ? "Arial, sans-serif" : "";
-          });
-        },
-        args: [enabled, fontSize, lineHeight, fontColor, bgColor]
+  const handleTranslate = async () => {
+    const text = await getSelectedText();
+    if (!text) {
+      alert("Please select text to translate.");
+      return;
+    }
+  
+    try {
+      const response = await axios.post("http://localhost:5000/translate", {
+        text: text,
+        source: sourceLanguage,
+        target: targetLanguage,
       });
-    });
+      setTranslatedText(response.data.translated_text);
+    } catch (error) {
+      console.error("Translation Error:", error);
+      alert("Failed to translate text.");
+    }
   };
+    
 
   useEffect(() => {
     if (easyRead) {
@@ -201,7 +216,7 @@ export default function EnhancedAccessibilityTool() {
   };
 
   return (
-    <div style={{ padding: '20px', width: '320px', minHeight: '400px', overflowY: 'auto', position: 'relative' }}>
+      <div style={{ padding: '20px', width: '320px', minHeight: '400px', overflowY: 'auto', position: 'relative' }}>
       {isSummarizing && (
         <div style={overlayStyle}>
           <div style={loadingBoxStyle}>
@@ -294,7 +309,19 @@ export default function EnhancedAccessibilityTool() {
             </button>
           </div>
         )}
+      </div> 
+
+      <button onClick={handleTranslate}>Translate Selected Text</button>
+      <div>
+        <label>Source Language:</label>
+        <input type="text" value={sourceLanguage} onChange={(e) => setSourceLanguage(e.target.value)} />
       </div>
+      <div>
+        <label>Target Language:</label>
+        <input type="text" value={targetLanguage} onChange={(e) => setTargetLanguage(e.target.value)} />
+      </div>
+      {translatedText && <p>Translated: {translatedText}</p>}
+
     </div>
   );
 }
