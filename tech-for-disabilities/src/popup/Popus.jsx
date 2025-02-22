@@ -2,14 +2,13 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 
 const HUGGING_FACE_API_KEY = import.meta.env.VITE_API_KEY;
-const apiKey = import.meta.env.VITE_TRANSLATE_API_KEY;
 
 export default function EnhancedAccessibilityTool() {
   // Original accessibility states
   const [textToSpeech, setTextToSpeech] = useState(false);
-  const [signLanguage, setSignLanguage] = useState(false);
   const [easyRead, setEasyRead] = useState(false);
   const [textAnalysis, setTextAnalysis] = useState(false);
+  const [translateEnabled, setTranslateEnabled] = useState(false);
   const [speed, setSpeed] = useState(1.0);
   const [voice, setVoice] = useState("");
   const [voices, setVoices] = useState([]);
@@ -48,15 +47,8 @@ export default function EnhancedAccessibilityTool() {
       case "tts":
         setTextToSpeech(!textToSpeech);
         break;
-      case "video-captioning":
-        setVideoCaptioning(!videoCaptioning);
-        chrome.runtime.sendMessage({
-          action: "toggleVideoCaptioning",
-          enableCaptioning: !videoCaptioning
-        });
-        break;
-        case "sign":
-        setSignLanguage(!signLanguage);
+      case "translate":
+        setTranslateEnabled(!translateEnabled); 
         break;
       case "read":
         setEasyRead(!easyRead);
@@ -170,13 +162,17 @@ export default function EnhancedAccessibilityTool() {
         source: sourceLanguage,
         target: targetLanguage,
       });
+  
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
+  
       setTranslatedText(response.data.translated_text);
     } catch (error) {
       console.error("Translation Error:", error);
-      alert("Failed to translate text.");
+      alert("Failed to translate text: " + error.message);
     }
-  };
-    
+  };    
 
   useEffect(() => {
     if (easyRead) {
@@ -262,11 +258,6 @@ export default function EnhancedAccessibilityTool() {
             )}
           </div>
         )}
-
-        <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <span>Sign Language Mode</span>
-          <input type="checkbox" checked={signLanguage} onChange={() => handleToggle("sign")} />
-        </label>
         
         <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
           <span>Easy Read Mode</span>
@@ -309,19 +300,30 @@ export default function EnhancedAccessibilityTool() {
             </button>
           </div>
         )}
+
+      {/* Translate Toggle */}
+      <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <span>Enable Translation</span>
+          <input type="checkbox" checked={translateEnabled} onChange={() => handleToggle("translate")} />
+        </label>
+
+        {/* Show translation UI only when enabled */}
+        {translateEnabled && (
+          <div>
+            <label>Source Language:</label>
+            <input type="text" value={sourceLanguage} onChange={(e) => setSourceLanguage(e.target.value)} />
+
+            <label>Target Language:</label>
+            <input type="text" value={targetLanguage} onChange={(e) => setTargetLanguage(e.target.value)} />
+
+            <button onClick={handleTranslate} style={{ marginTop: "10px", backgroundColor: "#007bff", color: "white", padding: "8px", borderRadius: "6px", border: "none", cursor: "pointer" }}>
+              Translate Selected Text
+            </button>
+
+            {translatedText && <p>Translated: {translatedText}</p>}
+          </div>
+        )}
       </div> 
-
-      <button onClick={handleTranslate}>Translate Selected Text</button>
-      <div>
-        <label>Source Language:</label>
-        <input type="text" value={sourceLanguage} onChange={(e) => setSourceLanguage(e.target.value)} />
-      </div>
-      <div>
-        <label>Target Language:</label>
-        <input type="text" value={targetLanguage} onChange={(e) => setTargetLanguage(e.target.value)} />
-      </div>
-      {translatedText && <p>Translated: {translatedText}</p>}
-
     </div>
   );
 }
