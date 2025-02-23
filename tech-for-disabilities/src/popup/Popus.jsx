@@ -16,7 +16,9 @@ export default function EnhancedAccessibilityTool() {
   const [lineHeight, setLineHeight] = useState(2);
   const [fontColor, setFontColor] = useState("#111");
   const [bgColor, setBgColor] = useState("#ffffff");
-  
+  const [videoCaptioning, setVideoCaptioning] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+
   // Speech control states
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -56,6 +58,27 @@ export default function EnhancedAccessibilityTool() {
         break;
       case "analysis":
         setTextAnalysis(!textAnalysis);
+        break;
+      case "video-captioning":
+        setVideoCaptioning(!videoCaptioning);
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs[0]) {
+            chrome.tabs.sendMessage(
+              tabs[0].id,
+              {
+                action: "toggleVideoCaptioning",
+                enableCaptioning: !videoCaptioning,
+              },
+              (response) => {
+                if (chrome.runtime.lastError) {
+                  console.error("Error sending message:", chrome.runtime.lastError);
+                } else {
+                  console.log("Message sent successfully:", response);
+                }
+              }
+            );
+          }
+        });
         break;
       default:
         break;
@@ -172,7 +195,27 @@ export default function EnhancedAccessibilityTool() {
       console.error("Translation Error:", error);
       alert("Failed to translate text: " + error.message);
     }
-  };    
+  };   
+  
+  const toggleEasyReadMode = (enabled, fontSize, lineHeight, fontColor, bgColor) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs.length) return;
+
+      chrome.scripting.executeScript({
+        target: { tabId: tabs[0].id },
+        func: (enabled, fontSize, lineHeight, fontColor, bgColor) => {
+          document.querySelectorAll("* :not(script, style, meta, link)").forEach((el) => {
+            el.style.fontSize = enabled ? `${fontSize}px` : "";
+            el.style.lineHeight = enabled ? `${lineHeight}` : "";
+            el.style.color = enabled ? fontColor : "";
+            el.style.backgroundColor = enabled ? bgColor : "";
+            el.style.fontFamily = enabled ? "Arial, sans-serif" : "";
+          });
+        },
+        args: [enabled, fontSize, lineHeight, fontColor, bgColor]
+      });
+    });
+  };
 
   useEffect(() => {
     if (easyRead) {
@@ -222,7 +265,12 @@ export default function EnhancedAccessibilityTool() {
         </div>
       )}
 
-      <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 'bold' }}>Enhanced Accessibility Tools</h2>
+<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+  <img src="logo.png" alt="WAVY Logo" style={{ height: '40px' }} />
+  <h2 style={{ fontSize: '20px', fontWeight: 'bold', fontFamily: '"Poppins", sans-serif' }}>
+    WAVY: Navigate with Ease
+  </h2>
+</div>
       
       <div style={{ marginTop: '16px', padding: '12px', border: '1px solid #ccc', borderRadius: '10px' }}>
         <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -264,7 +312,7 @@ export default function EnhancedAccessibilityTool() {
           <input type="checkbox" checked={easyRead} onChange={() => handleToggle("read")} />
         </label>
         
-        {easyRead && (
+        {/* {easyRead && (
           <div>
             <label>Font Size ({fontSize}px)</label>
             <input type="range" min="16" max="32" step="1" value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} style={{ width: '100%' }} />
@@ -275,6 +323,19 @@ export default function EnhancedAccessibilityTool() {
             <label>Font Color</label>
             <input type="color" value={fontColor} onChange={(e) => setFontColor(e.target.value)} style={{ width: '100%' }} />
             
+            <label>Background Color</label>
+            <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} style={{ width: '100%' }} />
+          </div>
+        )} */}
+
+        {easyRead && (
+          <div>
+            <label>Font Size ({fontSize}px)</label>
+            <input type="range" min="16" max="32" step="1" value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} style={{ width: '100%' }} />
+            <label>Line Height ({lineHeight})</label>
+            <input type="range" min="1" max="3" step="0.1" value={lineHeight} onChange={(e) => setLineHeight(parseFloat(e.target.value))} style={{ width: '100%' }} />
+            <label>Font Color</label>
+            <input type="color" value={fontColor} onChange={(e) => setFontColor(e.target.value)} style={{ width: '100%' }} />
             <label>Background Color</label>
             <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} style={{ width: '100%' }} />
           </div>
@@ -323,6 +384,7 @@ export default function EnhancedAccessibilityTool() {
             {translatedText && <p>Translated: {translatedText}</p>}
           </div>
         )}
+
       </div> 
     </div>
   );

@@ -26,3 +26,26 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         });
     }
 });
+
+// Add context menu for captioning
+chrome.runtime.onInstalled.addListener(() => {
+    chrome.contextMenus.create({
+      id: "toggleCaptions",
+      title: "Toggle Video Captions",
+      contexts: ["all"],
+    });
+  });
+  
+  // Handle context menu clicks
+  chrome.contextMenus.onClicked.addListener((info, tab) => {
+    if (info.menuItemId === "toggleCaptions") {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: "toggleVideoCaptioning",
+            enableCaptioning: true,
+          });
+        }
+      });
+    }
+  });
