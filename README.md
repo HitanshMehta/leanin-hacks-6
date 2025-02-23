@@ -31,7 +31,7 @@ Below are some images showcasing WAVY's key features:
    ![Translation Feature](translate.jpg)  
 
 5. **Easy Read Mode**  
-   ![Customization & Readability](easy read.jpg)  
+   ![Customization & Readability](easy%20read.jpg)  
 
 ### 🎥 **Demo Video**  
 Check out WAVY in action!  
